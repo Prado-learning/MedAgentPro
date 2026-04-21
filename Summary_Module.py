@@ -1,9 +1,10 @@
 import os
 import json
-import openai
+
+from openai_compat import create_chat_completion, create_client, extract_text_content, get_default_model
 
 class Summary_Module:
-    def __init__(self, api_key):
+    def __init__(self, api_key, base_url=None, model=None):
         """
         Initialize the Summary object with the OpenAI API Key.
 
@@ -11,7 +12,8 @@ class Summary_Module:
             api_key (str): OpenAI 的 API Key
         """
         self.api_key = api_key
-        openai.api_key = self.api_key
+        self.client = create_client(api_key, base_url=base_url)
+        self.model = model or get_default_model()
 
     def summarize(self, input_file, output_file, prompt, field):
         """
@@ -45,11 +47,12 @@ class Summary_Module:
             {"role": "user", "content": f"{content}\n {prompt} \nAnswer with only one word (Yes or No)"}
         ]
 
-        completion = openai.ChatCompletion.create(
-            model="chatgpt-4o-latest",
-            messages=messages
+        completion = create_chat_completion(
+            self.client,
+            messages=messages,
+            model=self.model,
         )
-        summary_text = completion.choices[0].message.content
+        summary_text = extract_text_content(completion)
 
         output_data[field] = summary_text
 

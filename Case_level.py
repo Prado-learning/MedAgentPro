@@ -9,7 +9,7 @@ from Decider import GPT_Decider, Pro_Decider
 from Summary_Module import Summary_Module
 
 # domain tools
-from Glaucoma.tools import *  # segment_optic_cup, segment_optic_disc, ...
+from Glaucoma.tools import segment_optic_cup, segment_optic_disc
 
 # utils
 from utils import (
@@ -22,7 +22,13 @@ from utils import (
     build_qual_prompt,
 )
 
-OPENAI_API_KEY = ""
+# OPENAI_API_KEY = ""
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-ixbTrQOn0gQCP5FHF6cxHCXBOLlSZRoGuXMVo6QNJKy3PErn")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://chat.cloudapi.vip/v1")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "chatgpt-4o-latest")
+
+if not OPENAI_API_KEY:
+    raise RuntimeError("OPENAI_API_KEY is empty. Set the environment variable or fill it in Case_level.py.")
 
 # -------------------- data & configs --------------------
 data_root = "Glaucoma"
@@ -55,7 +61,7 @@ TOOL_FN_REGISTRY = {
 # -------------------- code generation (Coding_Agent) --------------------
 ensure_pkg_inited(data_root)
 
-coder = Coding_Agent(OPENAI_API_KEY)
+coder = Coding_Agent(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
 code_path = os.path.join(data_root, "tools", "GenCode.py")
 os.makedirs(os.path.dirname(code_path), exist_ok=True)
 if not os.path.exists(code_path):
@@ -114,24 +120,40 @@ for step in plan:
         requirement=requirement,
         enforce_function_name=fn_name,
         extra_context="`inputs` is a list; each item may be a file path or an in-memory object (e.g., numpy array). Handle both gracefully.",
-        model="chatgpt-4o-latest",
+        model=OPENAI_MODEL,
     )
     register_generated_function(data_root, TOOL_FN_REGISTRY, fn_name)
 
 # -------------------- case-level execution --------------------
-img_dir = "/mnt/data0/ziyue/dataset/Glaucoma/REFUGE2/Training400"
-name_list = (
-    [f"Glaucoma_{f}" for f in os.listdir(os.path.join(img_dir, "Glaucoma"))]
-    + [f"Non-Glaucoma_{f}" for f in os.listdir(os.path.join(img_dir, "Non-Glaucoma"))]
-)
+img_dir = os.getenv("GLAUCOMA_IMG_DIR", "/mnt/data0/ziyue/dataset/Glaucoma/REFUGE2/Training400")
+if not os.path.isdir(img_dir):
+    raise FileNotFoundError(
+        "Image directory not found. Set GLAUCOMA_IMG_DIR to your REFUGE2/Training400 directory.\n"
+        f"Current value: {img_dir}"
+    )
 
-Analyzer = GPT_Decider(OPENAI_API_KEY)
-Summarizer = Summary_Module(OPENAI_API_KEY)
-decider = Pro_Decider(OPENAI_API_KEY)
+class_dirs = [name for name in ("Glaucoma", "Non-Glaucoma") if os.path.isdir(os.path.join(img_dir, name))]
+if not class_dirs:
+    raise FileNotFoundError(
+        "Expected class folders under GLAUCOMA_IMG_DIR. Need at least one of: Glaucoma, Non-Glaucoma."
+    )
+
+name_list = []
+for class_name in class_dirs:
+    class_dir = os.path.join(img_dir, class_name)
+    for filename in os.listdir(class_dir):
+        name_list.append(f"{class_name}_{filename}")
+
+if not name_list:
+    raise RuntimeError(f"No images found under {img_dir}")
+
+Analyzer = GPT_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
+Summarizer = Summary_Module(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
+decider = Pro_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
 
 os.makedirs(os.path.join(data_root, "record"), exist_ok=True)
 
-for idx in tqdm(range(2)):  # demo first 2
+for idx in tqdm(range(min(2, len(name_list)))):  # demo first 2
     example = name_list[idx]
     subdir, file = example.split("_", 1)
 

@@ -1,0 +1,41 @@
+﻿# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SAM 基础模型权重（大文件，不上传）
+tools/MSA/checkpoint/
+**/checkpoint/sam/
+
+# 其他可能的大文件位置
+*.ckpt
+*.bin
+*.safetensors
+
+# 数据集
+data/
+datasets/
+
+# 虚拟环境
+venv/
+env/
+.venv/
+medagent/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志和临时输出
+*.log
+output/
+outputs/
+results/
+tmp/

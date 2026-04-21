@@ -5,9 +5,11 @@ import re
 import openai
 
 class Planner:
-    def __init__(self, api_key):
+    def __init__(self, api_key,base_url=None):
         self.api_key = api_key
         openai.api_key = self.api_key
+        if base_url:
+            openai.api_base = base_url
 
     # ---------- helpers ----------
     def _format_toolset_for_prompt(self, toolset):

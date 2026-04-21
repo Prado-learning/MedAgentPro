@@ -1,12 +1,14 @@
 import os
 import json
-import openai
 import base64
 
+from openai_compat import create_chat_completion, create_client, extract_text_content, get_default_model
+
 class Pro_Decider:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_url: str | None = None, model: str | None = None):
         self.api_key = api_key
-        openai.api_key = self.api_key
+        self.client = create_client(api_key, base_url=base_url)
+        self.model = model or get_default_model()
 
     # --- optional: support images like GPT_Decider ---
     def encode_image(self, image_path):
@@ -151,11 +153,12 @@ class Pro_Decider:
             }]}
         ]
 
-        completion = openai.ChatCompletion.create(
-            model="chatgpt-4o-latest",
-            messages=messages
+        completion = create_chat_completion(
+            self.client,
+            messages=messages,
+            model=self.model,
         )
-        raw = completion.choices[0].message.content
+        raw = extract_text_content(completion)
         obj = self.safe_json_parse(raw)
 
         # Pull weights & threshold from model, with robust fallbacks

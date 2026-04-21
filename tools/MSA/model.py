@@ -11,11 +11,12 @@ from .utils import *
 
 class SAM_Adapter:
     def __init__(self, sam_ckpt, weights):
-        self.args = cfg.parse_args()
+        # Use MSA defaults here instead of parsing the top-level application's CLI flags.
+        self.args = cfg.parse_args(argv=[])
         self.GPUdevice = torch.device('cuda', self.args.gpu_device)
         self.args.sam_ckpt = sam_ckpt
         self.args.weights = weights
-        self.net = get_network(self.args, self.args.net, use_gpu=self.args.gpu, gpu_device=self.GPUdevice, distribution = args.distributed)
+        self.net = get_network(self.args, self.args.net, use_gpu=self.args.gpu, gpu_device=self.GPUdevice, distribution=self.args.distributed)
 
         print(os.path.abspath(self.args.weights))
         print(f'=> resuming from {self.args.weights}')
@@ -48,7 +49,36 @@ class SAM_Adapter:
             point_labels = max_label
         # max agreement position
         indices = np.argwhere(mask == category) 
+        if len(indices) == 0:
+            raise ValueError(f"Could not find category {category} in the prompt mask.")
         return point_labels, indices[np.random.randint(len(indices))]
+
+    def _resolve_prompt_mask_path(self, img_path):
+        class_name = os.path.basename(os.path.dirname(img_path))
+        stem = os.path.splitext(os.path.basename(img_path))[0]
+        mask_name = f"{stem}.bmp"
+
+        candidates = []
+        env_root = os.getenv("GLAUCOMA_MASK_ROOT")
+        if env_root:
+            candidates.append(os.path.join(env_root, class_name, mask_name))
+
+        split_root = os.path.dirname(os.path.dirname(os.path.abspath(img_path)))
+        refuge_root = os.path.dirname(split_root)
+        candidates.append(
+            os.path.join(refuge_root, "Annotation-Training400", "Disc_Cup_Masks", class_name, mask_name)
+        )
+
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                return candidate
+
+        searched = "\n".join(candidates)
+        raise FileNotFoundError(
+            "Prompt mask not found for MSA segmentation. "
+            "Set GLAUCOMA_MASK_ROOT to REFUGE2/Annotation-Training400/Disc_Cup_Masks.\n"
+            f"Searched:\n{searched}"
+        )
 
     def predict_mask(self,img_path,save_path,category=1):
         img = Image.open(img_path).convert('RGB')
@@ -58,8 +88,10 @@ class SAM_Adapter:
             transforms.ToTensor(),
         ])
 
-        mask_dir = "/mnt/data0/ziyue/dataset/Glaucoma/REFUGE2/Annotation-Training400/Disc_Cup_Masks/Glaucoma"
-        mask = cv2.imread(os.path.join(mask_dir,os.path.basename(img_path).replace(".jpg",".bmp")),0)
+        mask_path = self._resolve_prompt_mask_path(img_path)
+        mask = cv2.imread(mask_path, 0)
+        if mask is None:
+            raise FileNotFoundError(f"Failed to read prompt mask: {mask_path}")
 
         point_labels = 1
         point_labels, pt = self.click_prompt(mask, point_labels=1, category=category)

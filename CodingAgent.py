@@ -1,13 +1,15 @@
 # coding_agent.py
 import os
 import re
-import openai
 from typing import Optional
 
+from openai_compat import create_chat_completion, create_client, extract_text_content, get_default_model
+
 class Coding_Agent:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key
-        openai.api_key = self.api_key
+        self.client = create_client(api_key, base_url=base_url)
+        self.model = model or get_default_model()
 
     # ---------- prompt assembly ----------
     def _build_messages(
@@ -95,7 +97,7 @@ class Coding_Agent:
         self,
         output_file: str,
         requirement: str,
-        model: str = "chatgpt-4o-latest",
+        model: Optional[str] = None,
         enforce_function_name: Optional[str] = None,
         extra_context: Optional[str] = None,
     ) -> str:
@@ -105,11 +107,12 @@ class Coding_Agent:
             extra_context=extra_context,
         )
 
-        completion = openai.ChatCompletion.create(
-            model=model,
-            messages=messages
+        completion = create_chat_completion(
+            self.client,
+            messages=messages,
+            model=model or self.model,
         )
-        raw = completion.choices[0].message.content or ""
+        raw = extract_text_content(completion)
         code = self._strip_fences(raw)
 
         fn_name = self._extract_function_name(code)

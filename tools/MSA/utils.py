@@ -18,12 +18,17 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import BinaryIO, List, Optional, Text, Tuple, Union
 
-import dateutil.tz
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError:
+    plt = None
 import numpy
 import numpy as np
 import PIL
-import SimpleITK as sitk
+try:
+    import SimpleITK as sitk
+except ModuleNotFoundError:
+    sitk = None
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -58,9 +63,15 @@ from tqdm import tqdm
 from . import cfg
 from .models.discriminator import Discriminator
 
+try:
+    import dateutil.tz
+except ModuleNotFoundError:
+    dateutil = None
+
 # from siren_pytorch import SirenNet, SirenWrapper
 
-args = cfg.parse_args()
+# Import-time helpers should not consume argv from the parent application.
+args = cfg.parse_args(argv=[])
 device = torch.device('cuda', args.gpu_device)
 
 '''preparation of domain loss'''
@@ -284,7 +295,10 @@ def set_log_dir(root_dir, exp_name):
 
     # set log path
     exp_path = os.path.join(root_dir, exp_name)
-    now = datetime.now(dateutil.tz.tzlocal())
+    if dateutil is not None:
+        now = datetime.now(dateutil.tz.tzlocal())
+    else:
+        now = datetime.now().astimezone()
     timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
     prefix = exp_path + '_' + timestamp
     os.makedirs(prefix)
@@ -1124,7 +1138,13 @@ def random_box(mask):
 
     return np.array([y_min, x_min, y_max, x_max])
 
-def resize_3d_image_itk(itkimage, newSize, resamplemethod=sitk.sitkNearestNeighbor):
+def resize_3d_image_itk(itkimage, newSize, resamplemethod=None):
+
+    if sitk is None:
+        raise ModuleNotFoundError("SimpleITK is required for resize_3d_image_itk.")
+
+    if resamplemethod is None:
+        resamplemethod = sitk.sitkNearestNeighbor
 
     resampler = sitk.ResampleImageFilter()
     originSize = itkimage.GetSize()  

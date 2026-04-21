@@ -1,10 +1,11 @@
 import os
 import json
-import openai
 import base64
 
+from openai_compat import create_chat_completion, create_client, extract_text_content, get_default_model
+
 class GPT_Decider:
-    def __init__(self, api_key):
+    def __init__(self, api_key, base_url=None, model=None):
         """
         Initialize the LLM_Decider object with the OpenAI API Key.
 
@@ -12,7 +13,9 @@ class GPT_Decider:
             api_key (str): OpenAI 的 API Key
         """
         self.api_key = api_key
-        openai.api_key = self.api_key
+        self.client = create_client(api_key, base_url=base_url)
+        self.model = model or get_default_model()
+
     
     def encode_image(self, image_path):
         with open(image_path, "rb") as image_file:
@@ -51,13 +54,12 @@ class GPT_Decider:
             }]}
         ]
 
-        completion = openai.ChatCompletion.create(
-            model="chatgpt-4o-latest",
-            # model = "gpt-4o",
-            # model = "o1",
-            messages=messages
+        completion = create_chat_completion(
+            self.client,
+            messages=messages,
+            model=self.model,
         )
-        result = completion.choices[0].message.content
+        result = extract_text_content(completion)
 
         if os.path.exists(output_file):
             with open(output_file, "r", encoding="utf-8") as json_file:

@@ -12,10 +12,12 @@ from langchain.chains import RetrievalQA
 # Suppress LangChain and related warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain_community")
-
+# OPENAI_API_KEY = "sk-ixbTrQOn0gQCP5FHF6cxHCXBOLlSZRoGuXMVo6QNJKy3PErn"
+# OPENAI_BASE_URL = "https://chat.cloudapi.vip/v1"
+# rag = RAG_Module(openai_api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
 class RAG_Module:
-    def __init__(self, openai_api_key, url_list=None):
+    def __init__(self, openai_api_key, base_url=None, url_list=None):
         """
         Initialize the RAG (Retrieval-Augmented Generation) model with the OpenAI API key and a list of known URLs.
         
@@ -24,6 +26,7 @@ class RAG_Module:
             url_list (list, optional): the known URLs to retrieve information from
         """
         self.openai_api_key = openai_api_key
+        self.base_url = base_url
         self.url_list = url_list or [
             "https://medlineplus.gov/glaucoma.html",  
         ]
@@ -84,6 +87,7 @@ class RAG_Module:
         llm = ChatOpenAI(
             model="gpt-3.5-turbo",
             openai_api_key=self.openai_api_key,
+            openai_api_base=self.base_url,
             temperature=0
         )
         qa_chain = RetrievalQA.from_chain_type(
@@ -120,7 +124,10 @@ class RAG_Module:
 
             documents = [Document(page_content=chunk, metadata={"source": url}) for chunk in split_docs]
 
-            embeddings = OpenAIEmbeddings(openai_api_key=self.openai_api_key)
+            embeddings = OpenAIEmbeddings(
+                openai_api_key=self.openai_api_key,
+                openai_api_base=self.base_url,
+            )
             vector_store = FAISS.from_documents(documents, embeddings)
             retriever = vector_store.as_retriever(
                 search_type="similarity_score_threshold",

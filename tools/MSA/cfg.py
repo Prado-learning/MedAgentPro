@@ -1,6 +1,6 @@
 import argparse
 
-def parse_args():    
+def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, default='sam', help='net type')
     parser.add_argument('-baseline', type=str, default='unet', help='baseline net type')
@@ -54,7 +54,15 @@ def parse_args():
     help='The path of segmentation data')
     # '../dataset/RIGA/DiscRegion'
     # '../dataset/ISIC'
-    opt = parser.parse_args()
+    return parser
+
+
+def parse_args(argv=None, allow_unknown=False):
+    parser = build_parser()
+    if allow_unknown:
+        opt, _ = parser.parse_known_args(args=argv)
+    else:
+        opt = parser.parse_args(args=argv)
 
     return opt
 

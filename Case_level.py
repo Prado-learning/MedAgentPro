@@ -1,4 +1,5 @@
 # main.py
+from sqlalchemy import true
 import os
 import json
 import re
@@ -9,7 +10,8 @@ from Decider import GPT_Decider, Pro_Decider
 from Summary_Module import Summary_Module
 
 # domain tools
-from Glaucoma.tools import segment_optic_cup, segment_optic_disc
+from Glaucoma.tools import *  # segment_optic_cup, segment_optic_disc, ...
+
 
 # utils
 from utils import (
@@ -22,13 +24,9 @@ from utils import (
     build_qual_prompt,
 )
 
-# OPENAI_API_KEY = ""
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-ixbTrQOn0gQCP5FHF6cxHCXBOLlSZRoGuXMVo6QNJKy3PErn")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://chat.cloudapi.vip/v1")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "chatgpt-4o-latest")
-
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is empty. Set the environment variable or fill it in Case_level.py.")
+OPENAI_API_KEY = "sk-yvwCuuN1jSQLlk9WSmkg8uhaaq2x0crlxDNRCsnlr7utatkK"
+OPENAI_BASE_URL = "https://api.bianxie.ai/v1"
+OPENAI_MODEL = "gpt-4o"
 
 # -------------------- data & configs --------------------
 data_root = "Glaucoma"
@@ -61,12 +59,12 @@ TOOL_FN_REGISTRY = {
 # -------------------- code generation (Coding_Agent) --------------------
 ensure_pkg_inited(data_root)
 
-coder = Coding_Agent(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
+coder = Coding_Agent(OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 code_path = os.path.join(data_root, "tools", "GenCode.py")
 os.makedirs(os.path.dirname(code_path), exist_ok=True)
-if not os.path.exists(code_path):
-    with open(code_path, "w", encoding="utf-8") as f:
-        f.write("# Generated code\n")
+# Reset generated module each run to avoid duplicate function redefinitions.
+with open(code_path, "w", encoding="utf-8") as f:
+    f.write("# Generated code\n")
 
 def build_requirement_and_name(step: dict, plan_by_id: dict, tool_by_id: dict, task_input_desc: str):
     """
@@ -115,45 +113,33 @@ for step in plan:
         tool_by_id=tool_by_id,
         task_input_desc=task.get("input", ""),
     )
+    if fn_name in TOOL_FN_REGISTRY:
+        continue
     coder.generate_function(
         output_file=code_path,
         requirement=requirement,
         enforce_function_name=fn_name,
         extra_context="`inputs` is a list; each item may be a file path or an in-memory object (e.g., numpy array). Handle both gracefully.",
-        model=OPENAI_MODEL,
+        model="chatgpt-4o-latest",
     )
     register_generated_function(data_root, TOOL_FN_REGISTRY, fn_name)
 
 # -------------------- case-level execution --------------------
-img_dir = os.getenv("GLAUCOMA_IMG_DIR", "/mnt/data0/ziyue/dataset/Glaucoma/REFUGE2/Training400")
-if not os.path.isdir(img_dir):
-    raise FileNotFoundError(
-        "Image directory not found. Set GLAUCOMA_IMG_DIR to your REFUGE2/Training400 directory.\n"
-        f"Current value: {img_dir}"
-    )
+img_dir = "/root/MedAgentPro/data/REFUGE2/Training400"
+name_list = (
+    [f"Glaucoma_{f}" for f in os.listdir(os.path.join(img_dir, "Glaucoma"))]
+    + [f"Non-Glaucoma_{f}" for f in os.listdir(os.path.join(img_dir, "Non-Glaucoma"))]
+)
 
-class_dirs = [name for name in ("Glaucoma", "Non-Glaucoma") if os.path.isdir(os.path.join(img_dir, name))]
-if not class_dirs:
-    raise FileNotFoundError(
-        "Expected class folders under GLAUCOMA_IMG_DIR. Need at least one of: Glaucoma, Non-Glaucoma."
-    )
-
-name_list = []
-for class_name in class_dirs:
-    class_dir = os.path.join(img_dir, class_name)
-    for filename in os.listdir(class_dir):
-        name_list.append(f"{class_name}_{filename}")
-
-if not name_list:
-    raise RuntimeError(f"No images found under {img_dir}")
-
-Analyzer = GPT_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
-Summarizer = Summary_Module(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
-decider = Pro_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL, model=OPENAI_MODEL)
+Analyzer = GPT_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+Summarizer = Summary_Module(OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+decider = Pro_Decider(OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
 os.makedirs(os.path.join(data_root, "record"), exist_ok=True)
 
-for idx in tqdm(range(min(2, len(name_list)))):  # demo first 2
+########################## debug ##########
+
+for idx in tqdm(range(2)):  # demo first 2
     example = name_list[idx]
     subdir, file = example.split("_", 1)
 

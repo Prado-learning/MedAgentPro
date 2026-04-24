@@ -31,7 +31,7 @@
       4
     ],
     "action_type": "quantitative",
-    "action": "compute cup-to-disc ratio",
+    "action": "compute cup-to-disc ratio using segmentation masks",
     "input_type": [
       1,
       2
@@ -45,22 +45,9 @@
       1
     ],
     "action_type": "qualitative",
-    "action": "assess cup-to-disc ratio for glaucoma risk",
+    "action": "assess glaucoma risk based on cup-to-disc ratio",
     "input_type": [
       3
-    ],
-    "output_type": "final indicator",
-    "output_path": "diagnosis.json"
-  },
-  {
-    "id": 5,
-    "tool": [
-      1
-    ],
-    "action_type": "qualitative",
-    "action": "observe optic nerve appearance for signs of glaucoma",
-    "input_type": [
-      0
     ],
     "output_type": "final indicator",
     "output_path": "diagnosis.json"

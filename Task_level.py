@@ -4,16 +4,10 @@ import json
 from RAG import RAG_Module
 from Planner import Planner
 
-# OPENAI_API_KEY = 'sk-mQRVq6Mved8vHoJklaJQnLabN0sT9KEnc2Vw45bniUAvBYPL'
-#
-#
-# rag = RAG_Module(openai_api_key=OPENAI_API_KEY)
-# planner = Planner(api_key=OPENAI_API_KEY)
-OPENAI_API_KEY = "sk-ixbTrQOn0gQCP5FHF6cxHCXBOLlSZRoGuXMVo6QNJKy3PErn"
-OPENAI_BASE_URL = "https://chat.cloudapi.vip/v1"   # 注意结尾一般是 /v1
+OPENAI_API_KEY = ''
 
-rag = RAG_Module(openai_api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
-planner = Planner(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+rag = RAG_Module(openai_api_key=OPENAI_API_KEY)
+planner = Planner(api_key=OPENAI_API_KEY)
  
 ## Load data
 data_root = "./Glaucoma"
@@ -59,4 +53,3 @@ planner_prompt = (
 
 
 planner.plan(data_root, planner_prompt, rag_result, filename="plan.json", toolset=toolset)
-

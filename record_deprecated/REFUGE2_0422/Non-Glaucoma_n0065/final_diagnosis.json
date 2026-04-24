@@ -1,0 +1,26 @@
+{
+    "overall": {
+        "weights": {
+            "assess cup-to-disc ratio for glaucoma risk": 0.3,
+            "observe optic nerve appearance for signs of glaucoma": 0.7
+        },
+        "threshold": 0.6,
+        "score": 0.35,
+        "diagnosis": "Negative",
+        "contributions": [
+            {
+                "indicator_name": "assess cup-to-disc ratio for glaucoma risk",
+                "value": 0.0,
+                "weight": 0.3,
+                "weighted": 0.0
+            },
+            {
+                "indicator_name": "observe optic nerve appearance for signs of glaucoma",
+                "value": 0.5,
+                "weight": 0.7,
+                "weighted": 0.35
+            }
+        ],
+        "model_raw": "Weights are set based on the relative importance of available indicators despite insufficient data."
+    }
+}
